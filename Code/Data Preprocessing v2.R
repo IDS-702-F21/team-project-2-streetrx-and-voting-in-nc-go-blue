@@ -5,13 +5,14 @@ library(arm)
 library(e1071)
 library(caret)
 library(pROC)
-library(ggdark)
+# library(ggdark)
 library(ggeasy)
-library(tidyverse)
+library(dplyr)
+# library(tidyverse)
 
 # Reading in datasets
-setwd("C:\\Users\\deeks\\Documents\\MIDS\\
-      IDS 702_Modeling and representation of data\\Team Assignments\\Datasets")
+getwd()
+#setwd("TeamProject2/team-project-2-streetrx-and-voting-in-nc-go-blue/Data/")
 voter <- read.csv("voter_stats_20201103.txt",  sep = '\t', skipNul = T)
 history <- read.csv("history_stats_20201103.txt", sep = '\t')
 
@@ -61,6 +62,9 @@ sum(merged$turnout)/sum(merged$total_voters)
 # and filtering dataset on those counties
 set.seed(123) #set your own seed to be able to replicate results
 all_counties <- unique(merged[c("county_desc")])
-county_sample <- c(sample(all_counties$county_desc,size=25,replace=F))
-voters_reduced <- merged[is.element(merged$county_desc,county_sample),]
+county_sample <- merged$county_desc[c(sample(all_counties$county_desc,
+                                             size=25,replace=F))]
+merged_reduced <- merged[is.element(merged$county_desc,county_sample),]
+
+merged_reduced$turnout_rate <- merged_reduced$turnout/merged_reduced$total_voters
 

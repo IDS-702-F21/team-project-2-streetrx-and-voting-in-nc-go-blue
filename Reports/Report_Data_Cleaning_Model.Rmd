@@ -1,0 +1,151 @@
+---
+title: "EDA, Modeling"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
+# Reading in libraries
+library(ggplot2)
+library(rms)
+library(arm)
+library(e1071)
+library(caret)
+library(pROC)
+library(ggdark)
+library(ggeasy)
+library(tidyverse)
+library(viridis)
+# install.packages("sjPlot")
+library(sjPlot)
+library(stargazer)
+
+# Reading in datasets
+voter <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\voter_stats_20201103.txt", header=TRUE, sep='\t')
+history <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\history_stats_20201103.txt", header=TRUE, sep='\t')
+
+
+# Dropping unwanted columns from both datasets
+drop <- c("election_date","stats_type","update_date")
+voter <- voter[, !names(voter) %in% drop]
+history <- history[, !names(history) %in% drop]
+
+# Aggregating the history dataset to match the level 
+# (of uniqueness of obs) of the voter dataset
+agg_history <- aggregate(list(turnout=history$total_voters), 
+                         list(county_desc=history$county_desc, 
+                              party_cd=history$voted_party_cd,
+                              age=history$age, race_code=history$race_code,
+                              ethnic_code=history$ethnic_code, 
+                              sex_code=history$sex_code,
+                              precinct_abbrv=history$precinct_abbrv, 
+                              vtd_abbrv=history$vtd_abbrv), sum)
+
+# Merging the two datasets on the following cols:
+# county_desc,	precinct_abbrv,	vtd_abbrv,	party_cd,	
+# race_code,	ethnic_code,	sex_code,	age
+merged <- left_join(voter, agg_history, by = NULL, copy = FALSE)
+
+# Replacing nulls in turnout by zeroes
+merged$turnout[is.na(merged$turnout)] <- 0
+
+# Taking a sample of 25 counties from the entire dataset 
+# and filtering dataset on those counties
+set.seed(123) #set your own seed to be able to replicate results
+all_counties <- unique(merged[c("county_desc")])
+county_sample <- c(sample(all_counties$county_desc,size=25,replace=F))
+voters_reduced <- merged[is.element(merged$county_desc,county_sample),]
+
+voters_reduced_agg <- aggregate(list(total_voters = voters_reduced$total_voters
+                             ,turnout = voters_reduced$turnout
+                            ),
+                        by=list(county_desc=voters_reduced$county_desc, 
+                                     party_cd=voters_reduced$party_cd,
+                                     age=voters_reduced$age, 
+                                     race_code=voters_reduced$race_code,
+                                     ethnic_code=voters_reduced$ethnic_code, 
+                                     sex_code=voters_reduced$sex_code
+                                     ),FUN=sum)
+
+voters_reduced_agg$county_desc <- factor(voters_reduced_agg$county_desc)
+voters_reduced_agg$party_cd <- factor(voters_reduced_agg$party_cd)
+voters_reduced_agg$age <- factor(voters_reduced_agg$age)
+voters_reduced_agg$race_code <- factor(voters_reduced_agg$race_code)
+voters_reduced_agg$ethnic_code <- factor(voters_reduced_agg$ethnic_code)
+voters_reduced_agg$sex_code <- factor(voters_reduced_agg$sex_code)
+voters_reduced_agg$turnout <- as.integer(voters_reduced_agg$turnout)
+
+# voters_reduced_agg$temp <- voters_reduced_agg$turnout
+# voters_reduced_agg$temp[voters_reduced_agg$temp > voters_reduced_agg$total_voters] <- voters_reduced_agg$total_voters
+
+
+voters_reduced_agg$turnout_rate <- voters_reduced_agg$turnout/voters_reduced_agg$total_voters
+voters_reduced_agg$turnout_rate[voters_reduced_agg$turnout_rate > 1] <- 1
+voters_reduced_agg$newcol <- voters_reduced_agg$turnout_rate * voters_reduced_agg$total_voters
+voters_reduced_agg = subset(voters_reduced_agg, select = -c(turnout))
+names(voters_reduced_agg)[names(voters_reduced_agg)=="newcol"] <- "turnout"
+
+# str(voters_reduced_agg)
+# unique(voters_reduced_agg$party_cd)
+# unique(voters_reduced_agg$race_code)
+# unique(voters_reduced_agg$age)
+
+# The unique counties in our dataset are:
+# CUMBERLAND   LEE          ORANGE       UNION        WATAUGA      CABARRUS     HARNETT      NEW HANOVER 
+# SCOTLAND     DAVIDSON     HAYWOOD      PERSON       ROWAN        WILSON       COLUMBUS     NORTHAMPTON 
+# PENDER       TYRRELL      ALEXANDER    WARREN       POLK         GATES        MACON        TRANSYLVANIA
+# HYDE
+```
+
+# Data
+
+## Data Pre-Processing
+
+The data used for this analysis was extracted from two files available with The North Carolina State Board of Elections (NCSBE), which is the agency charged with the administration of the elections process and campaign finance disclosure and compliance. One file contains the voter registration records, while the other contains data on the actual turnout (<https://www.ncsbe.gov/index.html>, <https://www.ncsbe.gov/results-data>). The code book can be found in the appendix.
+
+The unit of observation in the registered voters file is $county\_desc, precinct\_abbrv, vtd\_abbrv, party\_cd, race\_code, ethnic\_code, sex\_code$ and $age$. The turnouts file had data at a more granular level ($voting\_method$), and it was aggregated to match the unit of observation in the registered voter file. The registered voters file had 592265 observations, while the turnouts file had 928532 observations. Post aggregation of the turnouts file, there were 492567 observations remaining. The actual turnout numbers were then merged with the total voter file to create a model ready dataset. The dataset was further reduced to a sample of 25 counties, post which we were left with 13162 observations, grouped at a $county\_desc, party\_cd, race\_code, ethnic\_code, sex\_code$ and $age$ level, with the total number of registered voters and turnouts in demographic geoups represented by these characteristics.
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
+# start_time <- Sys.time()
+model2 <- glmer(cbind(turnout, total_voters-turnout) ~
+                  age + party_cd + race_code + ethnic_code + sex_code +
+                  age: party_cd + sex_code:party_cd + (party_cd | county_desc),
+                family=binomial(link="logit"), data=voters_reduced_agg, control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+# end_time <- Sys.time()
+# print(paste("The model training time:" , end_time - start_time))
+
+# summary(model2)
+stargazer(model2, header=FALSE, float=FALSE, single.row = TRUE, no.space = TRUE, 
+          column.sep.width = "3pt",font.size = "small")
+# tab_model(model2)
+```
+
+# Model
+
+Model selection was performed by accounting for different interactions and effects, which included both random and fixed effects. Our main interactions of interest are analysing how the turnouts differed by the sexes, and if party affiliations played a role. We are also interested in exploring by the turnouts differed for the age groups for different party affiliations.
+
+We fit a hierarchical model to explore the random effects that different counties may contribute to the model. Counties are used as the only hierarchy. In addition, random slopes for party affiliations were also considered. The model with random intercepts by county was then compared to the model with random slopes for party affiliations with an ANOVA Chi-squared test, and we observe that incorporating the random slope significantly improves model fit.
+
+The final model equation is as under:
+
+$$ y_i|x_i {\hspace 1mm}{\sim} {\hspace 1mm} Bernoulli (\pi_i); i = 1,2,\ldots, 13162; j = 1,2, \ldots, 25 $$ 
+\begin{equation}
+log(\frac{\pi_i}{1-\pi_i}) = (\beta_0 + \gamma_{0j|i|}) +  \beta_1 * age_{i1} + \beta_2*race\_code_{i2} + \beta_3*ethnic\_code_{i3} + \beta_4 sex\_code_{i4} + \beta_5 age:party\_cd_{i5} + \beta_6 sex\_code:party\_cd_{i6} + (\beta_7 + \gamma_{1j|i|}) party\_cd_{i7}
+\end{equation}
+
+$$ \gamma_{0j}, \gamma_{1j} {\hspace 1mm}{\sim} {\hspace 1mm} N_2(0, \Sigma)  $$
+
+In this model, age group 18 - 25 year olds, the Constitution Party, the Asian race, the Hispanic/Latino ethnicity and the female sex are used as baseline factors that are absorbed into the intercept, for ease of interpretation of the impact of these predictors in voter turnouts. All the predictors and the interaction terms are categorical, and a total of 44 distinct factors can be seen in the final model. We observe that the fixed effects of the model are significant at the 5% level. The largest z-values can be observed for $race_code$, $ethnic_code$ and $age$, signifying that these factors are the strongest predictors of whether a person if likely to turn up to vote in the elections.
+
+```{r echo=FALSE, results='asis', out.width="50%"}
+dotplot(ranef(model2, condVar=TRUE))
+```
+
+From the dotplot of the random effects above, we observe that introducing the random slope effect of party shows that the log odds of a person voting across different counties differs greatly by the party they are affiliated to. Counties like Alexander, Cabarrus, Orange and Union have odds of voting which are significantly different than zero. People voting for the Green Party have highly varying odds, but this can also be attributed to the lower number of observations recorded against this party. Although the plot confirms that parties account for a lot of the variance in the voting odds we see across counties, it still does not explain all the variation in the model. The residuals obtained are shown below.
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
+stargazer(ranef(model2, condVar=TRUE), header=FALSE, float=FALSE, single.row = TRUE, no.space = TRUE, column.sep.width = "3pt",font.size = "small")
+```

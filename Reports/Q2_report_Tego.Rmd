@@ -14,7 +14,8 @@ knitr::opts_chunk$set(echo = TRUE)
 This analysis is to investigate the potential factors, especially the demographic ones, that could affect the turnout rate of the US 2020 election in North Carolina. During the process, data cleaning, aggregation, and merging have been performed to combine the registered and history data in the same variables. Exploratory data analysis has then proceeded and several signs were found as a reference for the following modeling process. The finalized hierarchical model helps us dive into how age is impacting the turnout rate in the election, and sort of explains why the Republicans outperform the Democrats in certain counties. 
 
 ## Introduction
-It is widely acknowledged that the voting behaviors in the election are related to several factors, e.g., demographic ones, locations, or the party you tend to vote for. Our purpose is to construct a hierarchical model to answer the following questions: 
+It is widely acknowledged that the voting behaviors in the election are related to several factors, e.g., demographic ones, locations, or the party you tend to vote for. Our purpose is to construct a hierarchical model to answer the following questions:
+
 - How did different demographic subgroups vote in the 2020 general elections?
 - Did the odds of voting differ by county? Which counties differ the most?
 - How did the turnout rate differ between males and females for different parties?
@@ -31,7 +32,7 @@ The answers to our questions of interest are:
 
 - Among the interaction between age and party, there're many combinations that are statistically significant. One of the interpretations for these combinations could be that the odds of turnout for age group 26 to 40 who vote for Democrats is 2.03 times, increasing by one hundred and 3 percent, compared with the age group 18 to 25 who vote for CST. 
 
-Besides the above questions of interest, we further dive into the voter's age and investigate which age group has a higher impact on the turnout between Democrats and republicans. In the interaction between age and party, the 26 to 40 age group is the only statistically significant one compared with the other two age groups, with age group 18 to 25 as a baseline. Then, we further calculate the odds of turnout between the Democrats and Republicans at this age group, the result turns out that Republicans seems higher than Democrats, with odds of turn out is 2.41 for the former and 2.05 for the latter when the baseline is the age group of 18 to 25 voting to CST.
+Besides the above questions of interest, we further dive into the voter's age and investigate which age group has a higher impact on the turnout between Democrats and republicans. In the interaction between age and party, the 26 to 40 age group is the only statistically significant one compared with the other two age groups, with age group 18 to 25 as a baseline. Then, we further calculate the odds of turnout between the Democrats and Republicans at this age group, the result turns out that Republicans seems higher than Democrats, with odds of turn out is 2.41 for the former and 2.05 for the latter when the baseline is the age group of 18 to 25 voting for CST.
 
 ### Limitations
 During EDA, we find out that race could have an interaction with party. Further, applying a varying slope by county to race could also be a feasible option. However, due to too few observations for part of the categories in race, e.g., Pacific Islander, we did not put both into action. This could be considered as future work to further explore the analysis.     

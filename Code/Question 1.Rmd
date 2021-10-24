@@ -1,0 +1,337 @@
+---
+title: "__StreetRx__"
+author: '*Aarushi Verma, Deekshita Saikia, Mohammad Anas, Tego Chang, and Sydney Donati-Leach*'
+output:
+  pdf_document: default
+geometry: margin=0.5in
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+library(arm)
+library(pROC)
+library(e1071)
+library(caret)
+library(ggplot2)
+require(gridExtra)
+library(dplyr)
+library(magrittr)
+library(stargazer)
+library(rms)
+library(ggdark)
+library(ggeasy)
+library(tidyverse)
+library(viridis)
+library(sjPlot)
+library(qqplotr)
+library(lme4)
+```
+
+# __Introduction__ __and__ __Summary__
+
+StreetRx (streetrx.com) is a web-based citizen reporting tool enabling real-time collection of street price data on diverted pharmaceutical substances. Users anonymously report prices they paid for prescription drugs on the web. As part of our analysis, we built hierarchical models to investigate how location among other factors may influence the pricing per milligram of a certain drug. According to our analysis, the drug Codeine is found to cheaper in the Michigan, Missouri, Illinois and Texas states. We also found out that purchasing the drug in higher dosages and in huge quantities cad reduce the price paid for Codiene per milligram.
+
+
+## __Data__
+
+The data used in this analysis pertains to the drug, _Codeine_. We examined our data and observed missing values in columns ppm (price per milligram), mgstr (dosage strength in mg) and source (source of the reported price). We dropped the rows with missing values in ppm and mgstr column. Our original data had 4134 observations for Codeine which reduced to 3125 after missing value removal. Since the source column had high number of missing values and multiple unique values, we categorized the column into _Personal_, _Heard it_, _Internet_, _Not Indicated_. The column mgstr is a discrete variable however, it only contained 3 unique values. We created a new column called dosage to indicate the potency of the drug based on the mgstr values as low, medium or high dosage. In the state column we noted that some states had been incorrectly updated as USA hence, we replaced this value with "Others". We did not consider the form variable in our analysis since it only contained one value - pill/tablet. for the drug Codiene.
+
+```{r, include= FALSE, results= "asis" , message = FALSE, warning = FALSE, echo=FALSE}
+load("/Users/mohammadanas/Downloads/streetrx.RData")
+
+# choosing needed columns (needed)
+needed_cols <- c('ppm','state','USA_region','source','api_temp','form_temp','mgstr','bulk_purchase')
+streetrx_ncols <- streetrx[,needed_cols]
+
+# Observing the data set
+summary(streetrx_ncols)
+head(streetrx_ncols)
+colnames(streetrx_ncols)
+```
+
+```{r, include=FALSE, results='asis', message=FALSE, warning=FALSE, echo=FALSE}
+# choosing the required drug
+streetrx_Codeine <- streetrx_ncols[streetrx_ncols['api_temp'] == 'codeine',]
+
+# ommiting missing values
+streetrx_cleaned <- na.omit(streetrx_Codeine)
+
+# create new variable for source
+unique(streetrx_cleaned$source)
+streetrx_cleaned$source_F <- 'Internet'
+streetrx_cleaned$source_F[streetrx_cleaned$source == 'Personal'] <-  'Personal'
+streetrx_cleaned$source_F[streetrx_cleaned$source == 'Heard it'] <-  'Heard it'
+streetrx_cleaned$source_F[streetrx_cleaned$source == ''] <-  'Not Indicated'
+streetrx_cleaned$source_F <- factor(streetrx_cleaned$source_F, ordered = FALSE)
+streetrx_cleaned$source_F <- relevel(streetrx_cleaned$source_F, ref = "Not Indicated")
+
+## TO change labels for Bulk Purchase 
+
+# create new variable for dosage
+str(streetrx_cleaned)
+streetrx_cleaned$dosage <- 'medium'
+streetrx_cleaned$dosage[streetrx_cleaned$mgstr == 15] <-  'low'
+streetrx_cleaned$dosage[streetrx_cleaned$mgstr == 60] <-  'high'
+streetrx_cleaned$dosage <- factor(streetrx_cleaned$dosage)
+streetrx_cleaned$dosage <- relevel(streetrx_cleaned$dosage, ref = "low")
+
+# convert USA state to other
+levels(streetrx_cleaned$state)
+levels(streetrx_cleaned$state)[50] <-"Other"
+unique(streetrx_cleaned$state)
+```
+
+## EDA
+
+The first step in our EDA was to plot the response variable $ppm$ to check whether it follows a normal distribution in order to build a linear regression model. We observed the distribution of $ppm$ is highly skewed to the right. We used a log transformation on ppm to address the skewness. The distribution of log ppm was relatively normal and we decided to move ahead with our EDA with log ppm as our response variable. 
+
+```{r, echo=FALSE,header= FALSE, fig.height=2.0, fig.width=5,fig.align ="center",message = FALSE, warning = FALSE}
+p1 = streetrx_cleaned %>%
+ggplot(aes(x = ppm, fill = )) +
+  geom_histogram(bins = 40, color = "black", linetype = "dashed", fill = "lightblue") +
+  labs(title="Distribution of price per milligram for Codeine",y="Frequency", x= "ppm")+
+  theme_classic() + theme(plot.title = element_text(hjust = 0.5,size=10),legend.position="none")
+
+p2 = streetrx_cleaned %>%
+ggplot(aes(x = log(ppm))) + 
+  geom_histogram(bins = 30,color = "black", linetype = "dashed", fill = "lightblue") +  scale_fill_brewer(palette="Blues") +
+  scale_fill_viridis(discrete = TRUE) +
+  labs(title="Distribution of Log ppm for Codeine",y="Frequency", x= "Log ppm") + 
+  theme_classic() + theme(plot.title = element_text(hjust = 0.5,size=10),legend.position="none")
+
+
+grid.arrange(p1,p2, ncol=2)
+
+```
+
+To explore the data further, we plotted our variables to establish any interesting associations with the response variable. Since all our variables are factor variables, we plotted box plots to identify relationships between our variables.
+
+To establish main effects  we plotted log ppm against the variables $Source, Bulk purchase and Dosage$. We did not observe any change in trend in the plots for log ppm vs. Source and Bulk Purchase. We did note a variation in the trend plot for log ppm and dosage indicating an association between the two. However we must also bear in mind that both variables are derived from the price entered by the user for the drug. 
+
+```{r, include=FALSE, echo=FALSE,header= FALSE, fig.height=2.5, fig.width=3.5,fig.align ="center",message = FALSE, warning = FALSE}
+# Source vs log(ppm)
+# p1 = streetrx_cleaned %>%
+# ggplot(aes(x = source_F, y=log(ppm),fill = source_F)) +
+#   geom_boxplot() + labs(title="ppm vs Source",
+#        x="Source",y="Log ppm") + scale_fill_brewer(palette="Set3")+
+#   theme_classic() + theme(legend.position="none",plot.title = element_text(hjust = 0.5,size=10))
+
+# Dosage vs log(ppm)
+p2 = streetrx_cleaned %>%
+ggplot(aes(x = dosage, y=log(ppm),fill = dosage)) +
+  geom_boxplot() + labs(title="Log ppm vs Dosage",
+       x="Dosage",y="Log ppm") +scale_fill_brewer(palette="Set3")+
+  theme_classic() + theme(legend.position="none",plot.title = element_text(hjust = 0.5,size=10))
+
+# # Bulk-purchase vs log(ppm)
+# p3 = streetrx_cleaned %>%
+# ggplot(aes(x = bulk_purchase, y=log(ppm),fill = bulk_purchase)) +
+#   geom_boxplot() + labs(title="ppm vs Bulk Purchase",
+#        x="Bulk Purchase",y="Log ppm") +scale_fill_brewer(palette="Set3")+
+#   theme_classic() + theme(legend.position="none",plot.title = element_text(hjust = 0.5,size=10))
+# 
+grid.arrange(p2, ncol=1)
+
+```
+
+After assessing the relationships between the response and explanatory variables, we went on to further explore the interactions between the explanatory variables . The box plots for interaction between Dosage vs Bulk Purchase and Dosage vs. Source showed no change in trend. In particular, we observed some variation in trend of log(ppm) and bulk_purchase when looked at separately for each source. We concluded to explore this interactions further in our model.
+
+```{r, include = FALSE, out.width="50%",echo=FALSE, header= FALSE,fig.align ="center",message = FALSE, warning = FALSE}
+# Dosage vs Bulk Purchase
+p1 = streetrx_cleaned %>%
+ggplot(aes(x = dosage, y=log(ppm),fill = dosage)) +
+  geom_boxplot() + facet_wrap(~bulk_purchase) + labs(title="Dosage vs Bulk Purchase",
+       x="Dosage",y="Log ppm") + scale_fill_brewer(palette="Set3")+
+  theme_classic() + theme(legend.position="none",plot.title = element_text(hjust = 0.5,size=10),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Dosage vs Source
+p2 = streetrx_cleaned %>%
+ggplot(aes(x = dosage, y=log(ppm),fill = dosage)) +
+  geom_boxplot() + facet_wrap(~source_F) + labs(title="Dosage vs Source",
+       x="Dosage",y="Log ppm") +scale_fill_brewer(palette="Set3")+
+  theme_classic() + theme(legend.position="none",plot.title = element_text(hjust = 0.5,size=10),axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Bulk-purchase vs Source
+p3 = streetrx_cleaned %>%
+ggplot(aes(x = bulk_purchase, y=log(ppm),fill = bulk_purchase)) +
+  geom_boxplot() + facet_wrap(~source_F) + labs(title="Bulk Purchase vs Source",
+       x="Bulk Purchase",y="Log ppm") +scale_fill_brewer(palette="Set3")+
+  theme_classic() + theme(legend.position="none",plot.title = element_text(hjust = 0.5,size=10))
+
+grid.arrange(p3, ncol=1)
+
+```
+
+
+We also plotted the response variable against our location variables - State and USA region to establish whether we should include the random intercept for these variables. 
+
+We observed a slight trend change between log ppm and USA region. For state, we saw variation across multiple states. Since states are nested within regions, we decided to assess the impact of location on the price of the drug at a more granular level i.e. at the state level. Hence we included state as our hierarchical variable. 
+
+The state variable has more than 50 levels, therefore to look at the trend we plotted a subset of these states. We filtered states with more than 50 observations in our data and plotted them against log ppm to see if there was any variation. We did see a variation and thus we decided to control our intercept of the model by state.
+
+
+
+```{r, out.width="50%",echo=FALSE,header= FALSE,fig.align ="center",message = FALSE, warning = FALSE, fig.height=3.5}
+data <- streetrx_cleaned %>% count(state)
+
+# state vs log(ppm) (random intercept)
+
+sample_state <- data[data['n'] > 50,'state']
+
+ggplot(streetrx_cleaned[is.element(streetrx_cleaned$state,sample_state),], 
+       aes(x=state, y=log(ppm), fill=state)) + 
+  geom_boxplot() + 
+  labs(title="Log ppm levels by state", 
+       x="State",y="Log ppm") + theme_classic() + 
+  theme(legend.position="none",plot.title = element_text(hjust = 0.5,size=10),axis.text.x = element_text(angle = 90))
+
+```
+ 
+
+
+
+We also investigated whether we need to include any random slopes in our model based on the interaction between the main effects and our grouping variable State. We plotted box plots to investigate the associations and concluded that we may need to include random slopes by State for the Source variables and Bulk Purchase variable based on change in trends across states for ppm for these variables.
+
+
+
+## __Model__        
+
+To build our model, we first built our baseline linear regression which included all our main effects without controlling any of the intercepts or slopes by state. Next we used step wise selection using AIC to generate our final linear model with main effects. We then included some interaction effects which we thought to be significant, or they answered questions with respect to the study. With the help of anova tests we assessed if these interaction were significant to our model.  We then incorporated our random intercepts and random slopes and tested them again using annova to arrive on our final model.
+
+### __Model Building__        
+
+Our first model included the main effect of every variable. Since all effects are factor variables we did not need to center them to improve our interpretation. Here our response variable is __log ppm__ and the predictors are __source, dosage and bulk purchase__.  Next we used step wise selection using AIC and BIC to assess which variables should we retain in our model. Based on this, we removed the variable source from our model. Given that source was an interesting variable we also tested it using anova and the p value was insignificant at 95% confidence level. 
+
+To ensure our final model is the best fit for our data, we also included the one interaction effect we found interesting during our EDA to the model and used the anova test to conclude whether the interaction between source and bulk purchase had a significant impact on our model or not. However, based on anova the interaction also came out to be insignificant which meant there seemed to be no additional impact of those interactions.
+
+Once we had our linear model, we proceeded to include the random intercepts and slopes that were of interest to us. Based on our EDA we included a varying intercept for the state variable. Further, we also included varying slopes by state for bulk purchase and dosage. In order to analyze whether including varying slopes improved the fit of the model, we used anova to compare each of the varying slope models to our model, which only included the varying intercept. However based on anova, the p value for both the models with varying slopes was insignificant at 95% confidence level indicating that controlling for slopes by state did not improve the fit of our model.
+
+$$
+y_{i\ state} = (\beta_0 + \gamma_{0\ state}) + (\beta_1)dosage_{1i\ state} + (\beta_1)bulk\_purchase_{1i\ state} + \epsilon_{i\ state};\ i = 1,...,n_{state};\ state= 1,...,59
+$$
+
+```{r, echo=FALSE,include = FALSE, message=FALSE, warning=FALSE, results='asis'}
+## MODEL Building
+# base model includes all main effects
+base_model <- lm(log(ppm) ~ source_F + bulk_purchase + dosage
+                 ,data= streetrx_cleaned)
+
+summary(base_model)
+#backward selection
+null_model <- lm(log(ppm) ~ source_F, data= streetrx_cleaned)
+base_model <- lm(log(ppm) ~ source_F + 
+                   bulk_purchase + dosage, data= streetrx_cleaned)
+Model_backward <- step(null_model,scope = formula(base_model), direction = "both", trace = 0)
+Model_backward$call
+
+
+# both AIC and BIC come up with the same model which contains bulk_purchase and dosage
+# we test with anova to ensure that the we should keep source or not and annova removed it
+
+model_with_source <- lm(formula = log(ppm) ~ dosage + bulk_purchase, data = streetrx_cleaned)
+model_without_source <- lm(formula = log(ppm) ~ source_F + dosage + bulk_purchase, data = streetrx_cleaned)
+anova(model_without_source, model_with_source)
+
+# use to test interaction that was found interesting in the EDA and annova removes it 
+model_without_interaction <- lm(formula = log(ppm) ~ dosage + bulk_purchase, data = streetrx_cleaned)
+model_with_interaction <- lm(formula = log(ppm) ~ dosage + bulk_purchase + bulk_purchase*source_F, data = streetrx_cleaned)
+anova(model_with_interaction, model_without_interaction)
+
+
+
+# we control the intercept of state
+model_state_controlled <- lmer(log(ppm) ~  dosage + bulk_purchase + 
+                                 (1| state), data = streetrx_cleaned)
+
+# control slope for states and test them with anova
+model_state_dosage <- lmer(log(ppm) ~  dosage + bulk_purchase + 
+                             (dosage| state), data = streetrx_cleaned)
+
+anova(model_state_controlled,model_state_dosage)
+# Random Slope insignificant
+
+# checking for varying slope of bulk_purchase 
+model_state_bulk_purchase <- lmer(log(ppm) ~  dosage + bulk_purchase + 
+                                    (bulk_purchase| state), data = streetrx_cleaned)
+
+anova(model_state_controlled,model_state_bulk_purchase)
+# Random Slope insignificant
+
+# checking for varying intercept of Region 
+model_state_USA_region <- lmer(log(ppm) ~  dosage + bulk_purchase + 
+                                    (1| state) + (1|USA_region) , data = streetrx_cleaned)
+
+anova(model_state_controlled,model_state_bulk_purchase)
+# Random Intercept of USA Region insignificant
+
+# we make final model based after all the anova tests and test assumption
+final_model <- lmer(log(ppm) ~  dosage + bulk_purchase + 
+                      (1| state), data = streetrx_cleaned)
+```
+
+
+### __Model Assessment__        
+
+To assess our final model we checked if the assumptions of Linearity, Normality, Equal variance and Independence were violated. Since all our variables are factor variables, we were unable to verify the linearity assumption.
+
+```{r,include=FALSE,fig.align ="center",echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+
+resid <- residuals(final_model)
+fitted <- fitted(final_model)
+
+```
+
+
+To check the independence and equal variance assumptions we plotted the residuals against the fitted values. The points seemed randomly distributed with no discernible pattern and the spread of variables seemed constant above and below the line. There did seem to be some points on the x axis that may have violated the equal variance of errors assumptions however, they were only few points and it is safe to say that neither of the above mentioned assumptions were violated. However, this does indicate that there are outliers are present in our data. To check for normality, we plotted the Q-Q plot. For our model we observed that majority of the points lie on the 45 degree line. Both the _Q-Q plot_ and the _Residuals vs fitted plot are shown below.
+
+`````{r, echo=FALSE, message=FALSE, warning=FALSE, results="asis", fig.show="hold",  out.width="50%" ,fig.height= 3.5}
+
+# check for residual against fitted
+ggplot(data = streetrx_cleaned, aes(x = fitted, y = resid)) +
+  geom_point() + geom_smooth()+
+  labs(title = 'Residuals vs Fitted')
+#check for normality
+ggplot(mapping = aes(sample = resid )) + stat_qq_point(size =2, color = "blue") + stat_qq_line() + xlab("Theortical Quantiles") + ylab("Sample Quantiles") + ggtitle("Normal QQ Plot") +
+  theme(plot.title = element_text(hjust = 0.5) )
+
+```
+
+To check if outliers were affecting our model we removed them from our data and ran the model again. However, the standard estimates and their p-values did not change and hence we can conclude that the outliers were not affecting our model.
+
+# Model Interpretations
+
+
+
+We found out that all our explanatory variables had a significant effect on log_ppm. To make the interpretation of the standard estimates simpler we exponentiate them and measure the effect on price. We notice that for low dosage and drug not being purchase in bulk the price was 0.33 USD. If the drug was purchased in high dosage the price per milligram decreased by 65% compared to if it was purchase in low dosage. When purchase in medium dosage the price/mg decreases by 51%. If the drug was purchase in bulk, the price/mg dropped by 87%. We also note that controlling our intercept for state only explains 13.2% of the variation in log(ppm). The summary of our model is shown below.
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.height=3}
+final_model <- lmer(log(ppm) ~  dosage + bulk_purchase + 
+                      (1| state), data = streetrx_cleaned)
+stargazer(final_model, title = "Hierarchical Model Summary", float = TRUE, no.space=TRUE, header=FALSE, single.row=TRUE, font.size="small", digits = 2, ci=TRUE, ci.level=0.95)
+```
+
+
+
+Looking at the dot plot of random effects we notice that the the drug Codeine is found to be cheaper in the states Michigan, Missouri, Illinois and Texas. The confidence interval of the random effect for the other states contains zero, hence, we can say that the price of the drug does not vary significantly for them. The dotplot is shown below.
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.height= 6.7, fig.align='center'}
+# dotplot for random effects
+dotplot(ranef(final_model, condVar= TRUE))$state
+```
+
+# Limitations and Conclusions
+
+There are a few potential limitations in our model. Firstly, we removed 919 data observations when dealing with missing values. This can be avoided using missing value imputation methods. The second major limitation is that the data used is not reliable as it is crowd sourced and any one can put in any value for the price of the drug.
+
+To conclude, we note that the drug Codeine can be bought for a cheaper price in the Michigan, Missouri, Illinois and Texas states. Purchasing the drug in bulk quantity and at high dosages can also reduce the price of the drug. It was surprising to find out that the source variable did not have a significant affect on the price/mg as we initially hypothesized that prices on the internet to be more expensive than the prices they observed through personal experiences.
+
+
+
+
+
+
+
+
+
+
+

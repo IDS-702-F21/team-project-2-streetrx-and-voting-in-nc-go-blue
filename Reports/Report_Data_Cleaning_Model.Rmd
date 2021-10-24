@@ -106,14 +106,14 @@ names(voters_reduced_agg)[names(voters_reduced_agg)=="newcol"] <- "turnout"
 
 The data used for this analysis was extracted from two files available with The North Carolina State Board of Elections (NCSBE), which is the agency charged with the administration of the elections process and campaign finance disclosure and compliance. One file contains the voter registration records, while the other contains data on the actual turnout (<https://www.ncsbe.gov/index.html>, <https://www.ncsbe.gov/results-data>). The code book can be found in the appendix.
 
-The unit of observation in the registered voters file is $county\_desc, precinct\_abbrv, vtd\_abbrv, party\_cd, race\_code, ethnic\_code, sex\_code$ and $age$. The turnouts file had data at a more granular level ($voting\_method$), and it was aggregated to match the unit of observation in the registered voter file. The registered voters file had 592265 observations, while the turnouts file had 928532 observations. Post aggregation of the turnouts file, there were 492567 observations remaining. The actual turnout numbers were then merged with the total voter file to create a model ready dataset. The dataset was further reduced to a sample of 25 counties, post which we were left with 13162 observations, grouped at a $county\_desc, party\_cd, race\_code, ethnic\_code, sex\_code$ and $age$ level, with the total number of registered voters and turnouts in demographic geoups represented by these characteristics.
+The unit of observation in the registered voters file is $county\_desc$, $precinct\_abbrv$, $vtd\_abbrv$, $party\_cd$, $race\_code$, $ethnic\_code$, $sex\_code$ and $age$. The turnouts file had data at a more granular level ($voting\_method$), and it was aggregated to match the unit of observation in the registered voter file. The registered voters file had 592,265 observations, while the turnouts file had 928,532 observations. Post aggregation of the turnouts file, there were 492,567 observations remaining. The actual turnout numbers were then merged with the total voter file to create a model ready dataset. The dataset was further reduced to a sample of 25 counties, post which we were left with 13,162 observations, grouped at a $county\_desc$, $party\_cd$, $race\_code$, $ethnic\_code$, $sex\_code$ and $age$ level, with the total number of registered voters and turnouts in demographic geoups represented by these characteristics.
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
 # start_time <- Sys.time()
-model2 <- glmer(cbind(turnout, total_voters-turnout) ~
-                  age + party_cd + race_code + ethnic_code + sex_code +
-                  age: party_cd + sex_code:party_cd + (party_cd | county_desc),
-                family=binomial(link="logit"), data=voters_reduced_agg, control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+# model2 <- glmer(cbind(turnout, total_voters-turnout) ~
+#                   age + party_cd + race_code + ethnic_code + sex_code +
+#                   age: party_cd + sex_code:party_cd + (party_cd | county_desc),
+#                 family=binomial(link="logit"), data=voters_reduced_agg, control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
 # end_time <- Sys.time()
 # print(paste("The model training time:" , end_time - start_time))
 
@@ -131,21 +131,19 @@ We fit a hierarchical model to explore the random effects that different countie
 
 The final model equation is as under:
 
-$$ y_i|x_i {\hspace 1mm}{\sim} {\hspace 1mm} Bernoulli (\pi_i); i = 1,2,\ldots, 13162; j = 1,2, \ldots, 25 $$ 
-\begin{equation}
-log(\frac{\pi_i}{1-\pi_i}) = (\beta_0 + \gamma_{0j|i|}) +  \beta_1 * age_{i1} + \beta_2*race\_code_{i2} + \beta_3*ethnic\_code_{i3} + \beta_4 sex\_code_{i4} + \beta_5 age:party\_cd_{i5} + \beta_6 sex\_code:party\_cd_{i6} + (\beta_7 + \gamma_{1j|i|}) party\_cd_{i7}
-\end{equation}
+$$ y_i|x_i \hspace {1mm}{\sim} \hspace {1mm} Bernoulli (\pi_i);\hspace {1mm} i = 1,2,\ldots, 13162; \hspace {1mm} j = 1,2, \ldots, 25 $$ 
 
-$$ \gamma_{0j}, \gamma_{1j} {\hspace 1mm}{\sim} {\hspace 1mm} N_2(0, \Sigma)  $$
+$$
+(\beta_0 + \gamma_{0j|i|}) +  \beta_1 * x_{i1} + \beta_2*x_{i2} + \beta_3*x_{i3} + \beta_4*x_{i4} + \beta_5*x_{i5} + \beta_6*x_{i6} + (\beta_7 + \gamma_{1j|i|}) x_{i7};
+$$
+where, $x_{i1}$ is $age$, $x_{i2}$ is $race\_code$, $x_{i3}$ is $ethnic\_code$, $x_{i4}$ is $sex\_code$, $x_{i5}$ is the interaction effect of $age$ and $party\_code$, $x_{i6}$ is the interaction between $sex\_code$ and $party\_cd$, and $x_{i7}$ is $party\_cd$.
+
+$$ \gamma_{0j}, \gamma_{1j} \hspace {1mm}{\sim} \hspace {1mm} N_2(0, \Sigma)  $$
 
 In this model, age group 18 - 25 year olds, the Constitution Party, the Asian race, the Hispanic/Latino ethnicity and the female sex are used as baseline factors that are absorbed into the intercept, for ease of interpretation of the impact of these predictors in voter turnouts. All the predictors and the interaction terms are categorical, and a total of 44 distinct factors can be seen in the final model. We observe that the fixed effects of the model are significant at the 5% level. The largest z-values can be observed for $race_code$, $ethnic_code$ and $age$, signifying that these factors are the strongest predictors of whether a person if likely to turn up to vote in the elections.
 
-```{r echo=FALSE, results='asis', out.width="50%"}
+```{r echo=FALSE, message=FALSE, warning=FALSE, out.width="60%"}
 dotplot(ranef(model2, condVar=TRUE))
 ```
 
 From the dotplot of the random effects above, we observe that introducing the random slope effect of party shows that the log odds of a person voting across different counties differs greatly by the party they are affiliated to. Counties like Alexander, Cabarrus, Orange and Union have odds of voting which are significantly different than zero. People voting for the Green Party have highly varying odds, but this can also be attributed to the lower number of observations recorded against this party. Although the plot confirms that parties account for a lot of the variance in the voting odds we see across counties, it still does not explain all the variation in the model. The residuals obtained are shown below.
-
-```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
-stargazer(ranef(model2, condVar=TRUE), header=FALSE, float=FALSE, single.row = TRUE, no.space = TRUE, column.sep.width = "3pt",font.size = "small")
-```

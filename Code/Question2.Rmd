@@ -7,8 +7,6 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Data Cleaning
-
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
 # Reading in libraries
 library(ggplot2)
@@ -21,21 +19,14 @@ library(ggdark)
 library(ggeasy)
 library(tidyverse)
 library(viridis)
-install.packages("sjPlot")
+# install.packages("sjPlot")
 library(sjPlot)
+library(stargazer)
 
 # Reading in datasets
-voter <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/voter_stats_20201103.txt", header=TRUE, sep='\t')
-history <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/history_stats_20201103.txt", header=TRUE, sep='\t')
+voter <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\voter_stats_20201103.txt", header=TRUE, sep='\t')
+history <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\history_stats_20201103.txt", header=TRUE, sep='\t')
 
-# Preliminary check of the datasets
-head(voter)
-summary(voter)
-str(voter)
-
-head(history)
-summary(history)
-str(history)
 
 # Dropping unwanted columns from both datasets
 drop <- c("election_date","stats_type","update_date")
@@ -60,15 +51,6 @@ merged <- left_join(voter, agg_history, by = NULL, copy = FALSE)
 
 # Replacing nulls in turnout by zeroes
 merged$turnout[is.na(merged$turnout)] <- 0
-
-# quick QC on the voter numbers before and after merge --> match!
-agg_voter <- aggregate(voter$total_voters,
-                       list(Age=voter$age,Party=voter$party_cd),sum)
-agg_data <- aggregate(merged$total_voters,
-                      list(Age=merged$age,Party=merged$party_cd),sum)
-
-# Checking the proportion of voters who turned up to vote --> ~75%
-sum(merged$turnout)/sum(merged$total_voters)
 
 # Taking a sample of 25 counties from the entire dataset 
 # and filtering dataset on those counties
@@ -118,253 +100,50 @@ names(voters_reduced_agg)[names(voters_reduced_agg)=="newcol"] <- "turnout"
 # HYDE
 ```
 
-## EDA
+# Data
 
-You can also embed plots, for example:
+## Data Pre-Processing
+
+The data used for this analysis was extracted from two files available with The North Carolina State Board of Elections (NCSBE), which is the agency charged with the administration of the elections process and campaign finance disclosure and compliance. One file contains the voter registration records, while the other contains data on the actual turnout (<https://www.ncsbe.gov/index.html>, <https://www.ncsbe.gov/results-data>). The code book can be found in the appendix.
+
+The unit of observation in the registered voters file is $county\_desc$, $precinct\_abbrv$, $vtd\_abbrv$, $party\_cd$, $race\_code$, $ethnic\_code$, $sex\_code$ and $age$. The turnouts file had data at a more granular level ($voting\_method$), and it was aggregated to match the unit of observation in the registered voter file. The registered voters file had 592,265 observations, while the turnouts file had 928,532 observations. Post aggregation of the turnouts file, there were 492,567 observations remaining. The actual turnout numbers were then merged with the total voter file to create a model ready dataset. The dataset was further reduced to a sample of 25 counties, post which we were left with 13,162 observations, grouped at a $county\_desc$, $party\_cd$, $race\_code$, $ethnic\_code$, $sex\_code$ and $age$ level, with the total number of registered voters and turnouts in demographic geoups represented by these characteristics.
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
+# start_time <- Sys.time()
+# model2 <- glmer(cbind(turnout, total_voters-turnout) ~
+#                   age + party_cd + race_code + ethnic_code + sex_code +
+#                   age: party_cd + sex_code:party_cd + (party_cd | county_desc),
+#                 family=binomial(link="logit"), data=voters_reduced_agg, control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
+# end_time <- Sys.time()
+# print(paste("The model training time:" , end_time - start_time))
 
-# # Aggregating the entire dataset on sex
-# agg_by_sex <- aggregate(list(total_voters = voters_reduced_agg$total_voters
-#                              ,turnout = voters_reduced_agg$turnout
-#                             ),
-#                        list(sex_code=voters_reduced_agg$sex_code),sum)
-# 
-# agg_by_sex$turnout_rate <- agg_by_sex$turnout/agg_by_sex$total_voters
-# 
-# # Plot sex vs turnout for all data
-# ggplot(agg_by_sex,aes(x=sex_code, y=turnout_rate, fill=sex_code)) +
-#   geom_boxplot() + #coord_flip() +
-#   scale_fill_brewer(palette="Greens") +
-#   labs(title="Turnout Rate vs Sex",
-#        x="Sex",y="Turnout Rate") + 
-#   theme_classic() + theme(legend.position="none")
-
-# Plot county vs turnout 
-ggplot(voters_reduced_agg,aes(x=county_desc, y=turnout_rate, fill=county_desc))+
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Counties",
-       x="Counties",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none")
-
-# Plot party vs turnout 
-ggplot(voters_reduced_agg,aes(x=party_cd, y=turnout_rate, fill=party_cd)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Party Affiliation",
-       x="Party Affiliation",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none")
-
-# Plot age group vs turnout 
-ggplot(voters_reduced_agg,aes(x=age, y=turnout_rate, fill=age)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Age",
-       x="Age",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none")
-
-# Plot race vs turnout 
-ggplot(voters_reduced_agg,aes(x=race_code, y=turnout_rate, fill=race_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Race",
-       x="Race",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none")
-
-# Plot ethnicity vs turnout 
-ggplot(voters_reduced_agg,aes(x=ethnic_code, y=turnout_rate, fill=ethnic_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Ethnicity",
-       x="Ethnicity",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none")
-
-# Plot sex vs turnout
-ggplot(voters_reduced_agg,aes(x=sex_code, y=turnout_rate, fill=sex_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Sex",
-       x="Sex",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none")
-
-# Plot sex vs turnout by county
-ggplot(voters_reduced_agg,aes(x=sex_code, y=turnout_rate, fill=sex_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Sex by County",
-       x="Sex",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~county_desc, ncol=5)
-
-# Plot sex vs turnout by party
-ggplot(voters_reduced_agg,aes(x=sex_code, y=turnout_rate, fill=sex_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Sex by Party Affiliation",
-       x="Sex",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~party_cd, ncol=3)
-
-# Plot sex vs turnout by age
-ggplot(voters_reduced_agg,aes(x=sex_code, y=turnout_rate, fill=sex_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Sex by Age group",
-       x="Sex",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~age, ncol=4)
-
-# Plot sex vs turnout by race
-ggplot(voters_reduced_agg,aes(x=sex_code, y=turnout_rate, fill=sex_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Sex by Race",
-       x="Sex",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~race_code, ncol=4)
-
-# Plot sex vs turnout by ethnicity
-ggplot(voters_reduced_agg,aes(x=sex_code, y=turnout_rate, fill=sex_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Sex by Ethnicity",
-       x="Sex",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~ethnic_code, ncol=3)
-
-# Plot age vs turnout by party
-ggplot(voters_reduced_agg,aes(x=age, y=turnout_rate, fill=age)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Age group by Party Affiliation",
-       x="Age Group",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~party_cd, ncol=3)
-
-# Plot race vs turnout by party
-ggplot(voters_reduced_agg,aes(x=race_code, y=turnout_rate, fill=race_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Race by Party Affiliation",
-       x="Race",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~party_cd, ncol=3)
-
-# Plot age vs turnout by county
-ggplot(voters_reduced_agg,aes(x=age, y=turnout_rate, fill=age)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Age by County",
-       x="Age",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~county_desc, ncol=5)
-
-# Plot party vs turnout by county
-ggplot(voters_reduced_agg,aes(x=party_cd, y=turnout_rate, fill=party_cd)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Party Affiliation by County",
-       x="Party Affiliation",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~county_desc, ncol=5)
-
-# Plot race vs turnout by county
-ggplot(voters_reduced_agg,aes(x=race_code, y=turnout_rate, fill=race_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Race by County",
-       x="Race",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~county_desc, ncol=5)
-
-# Plot ethinicity vs turnout by county
-ggplot(voters_reduced_agg,aes(x=ethnic_code, y=turnout_rate, fill=ethnic_code)) +
-  geom_boxplot() + #coord_flip() +
-  # scale_fill_brewer(palette="Greens") +
-  scale_fill_viridis(discrete = TRUE) +
-  labs(title="Turnout Rate vs Ethnicity by County",
-       x="Ethnicity",y="Turnout Rate") + 
-  theme_classic() + theme(legend.position="none") +
-  facet_wrap(~county_desc, ncol=5)
-
-
-# TODO
-# frequencies for age vs party
-table(voters_reduced_agg$age, voters_reduced_agg$party_cd)
-
-# frequencies for age vs party
-table(voters_reduced_agg$sex_code, voters_reduced_agg$party_cd)
-
-# frequencies for sex vs race - observations against race "P" very few
-table(voters_reduced_agg$sex_code, voters_reduced_agg$race_code)
-
-# frequencies for sex vs ethnicity - very similar trends
-table(voters_reduced_agg$sex_code, voters_reduced_agg$ethnic_code)
-
-# frequencies for race vs party 
-table(voters_reduced_agg$race_code, voters_reduced_agg$party_cd)
-
-# frequencies for race vs county 
-table(voters_reduced_agg$race_code, voters_reduced_agg$county_desc)
-
-# frequencies for age vs county 
-table(voters_reduced_agg$age, voters_reduced_agg$county_desc)
-
-# frequencies for party vs county 
-table(voters_reduced_agg$party_cd, voters_reduced_agg$county_desc)
-
-# frequencies for ethnicity vs county 
-table(voters_reduced_agg$ethnic_code, voters_reduced_agg$county_desc)
-
+# summary(model2)
+stargazer(model2, header=FALSE, float=FALSE, single.row = TRUE, no.space = TRUE, 
+          column.sep.width = "3pt",font.size = "small")
+# tab_model(model2)
 ```
-```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
-start_time <- Sys.time()
-model1 <- glmer(cbind(turnout, total_voters-turnout) ~ 
-                  age + party_cd + race_code + ethnic_code + sex_code + 
-                  age: party_cd + sex_code:party_cd + (1 | county_desc), 
-                family=binomial, data=voters_reduced_agg, control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
-end_time <- Sys.time()
-print(paste("The model training time:" , end_time - start_time))
 
+# Model
 
-summary(model1)
-tab_model(model1)
-dotplot(ranef(model1, condVar=TRUE))
-```
-```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
-start_time <- Sys.time()
-model2 <- glmer(cbind(turnout, total_voters-turnout) ~
-                  age + party_cd + race_code + ethnic_code + sex_code +
-                  age: party_cd + sex_code:party_cd + (party_cd | county_desc),
-                family=binomial(link="logit"), data=voters_reduced_agg, control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)))
-end_time <- Sys.time()
-print(paste("The model training time:" , end_time - start_time))
+Model selection was performed by accounting for different interactions and effects, which included both random and fixed effects. Our main interactions of interest are analysing how the turnouts differed by the sexes, and if party affiliations played a role. We are also interested in exploring by the turnouts differed for the age groups for different party affiliations.
 
-summary(model2)
-tab_model(model2)
+We fit a hierarchical model to explore the random effects that different counties may contribute to the model. Counties are used as the only hierarchy. In addition, random slopes for party affiliations were also considered. The model with random intercepts by county was then compared to the model with random slopes for party affiliations with an ANOVA Chi-squared test, and we observe that incorporating the random slope significantly improves model fit.
+
+The final model equation is as under:
+
+$$ y_i|x_i \hspace {1mm}{\sim} \hspace {1mm} Bernoulli (\pi_i);\hspace {1mm} i = 1,2,\ldots, 13162; \hspace {1mm} j = 1,2, \ldots, 25 $$ 
+
+$$
+(\beta_0 + \gamma_{0j|i|}) +  \beta_1 * x_{i1} + \beta_2*x_{i2} + \beta_3*x_{i3} + \beta_4*x_{i4} + \beta_5*x_{i5} + \beta_6*x_{i6} + (\beta_7 + \gamma_{1j|i|}) x_{i7};
+$$
+where, $x_{i1}$ is $age$, $x_{i2}$ is $race\_code$, $x_{i3}$ is $ethnic\_code$, $x_{i4}$ is $sex\_code$, $x_{i5}$ is the interaction effect of $age$ and $party\_code$, $x_{i6}$ is the interaction between $sex\_code$ and $party\_cd$, and $x_{i7}$ is $party\_cd$.
+
+$$ \gamma_{0j}, \gamma_{1j} \hspace {1mm}{\sim} \hspace {1mm} N_2(0, \Sigma)  $$
+
+In this model, age group 18 - 25 year olds, the Constitution Party, the Asian race, the Hispanic/Latino ethnicity and the female sex are used as baseline factors that are absorbed into the intercept, for ease of interpretation of the impact of these predictors in voter turnouts. All the predictors and the interaction terms are categorical, and a total of 44 distinct factors can be seen in the final model. We observe that the fixed effects of the model are significant at the 5% level. The largest z-values can be observed for $race_code$, $ethnic_code$ and $age$, signifying that these factors are the strongest predictors of whether a person if likely to turn up to vote in the elections.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, out.width="60%"}
 dotplot(ranef(model2, condVar=TRUE))
 ```
 
-
-```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis'}
-anova(model1, model2, test="Chisq")
-
-```
-
+From the dotplot of the random effects above, we observe that introducing the random slope effect of party shows that the log odds of a person voting across different counties differs greatly by the party they are affiliated to. Counties like Alexander, Cabarrus, Orange and Union have odds of voting which are significantly different than zero. People voting for the Green Party have highly varying odds, but this can also be attributed to the lower number of observations recorded against this party. Although the plot confirms that parties account for a lot of the variance in the voting odds we see across counties, it still does not explain all the variation in the model. The residuals obtained are shown below.

@@ -3,8 +3,9 @@ output:
   pdf_document: default
 geometry: margin=0.5in
 ---
-# *Part I: __StreetRx__*
-## *Aarushi Verma as Programmer/Writer and Mohammad Anas as Programmer/Writer*
+
+# __*Part I: StreetRx*__
+## __*Aarushi Verma as Programmer/Writer and Mohammad Anas as Programmer/Writer*__
 
 
 ```{r setup, include=FALSE}
@@ -198,9 +199,7 @@ We also investigated whether we need to include any random slopes in our model b
 
 ## __Model__        
 
-To build our model, we first built our baseline linear regression which included all our main effects without controlling any of the intercepts or slopes by state. Next we used step wise selection using AIC to generate our final linear model with main effects. We then included some interaction effects which we thought to be significant, or they answered questions with respect to the study. With the help of anova tests we assessed if these interaction were significant to our model.  We then incorporated our random intercepts and random slopes and tested them again using annova to arrive on our final model.
-
-### __Model Building__        
+To build our model, we first built our baseline linear regression which included all our main effects without controlling any of the intercepts or slopes by state. Next we used step wise selection using AIC to generate our final linear model with main effects. We then included some interaction effects which we thought to be significant, or they answered questions with respect to the study. With the help of anova tests we assessed if these interaction were significant to our model.  We then incorporated our random intercepts and random slopes and tested them again using anova to arrive on our final model.
 
 Our first model included the main effect of every variable. Since all effects are factor variables we did not need to center them to improve our interpretation. Here our response variable is __log ppm__ and the predictors are __source, dosage and bulk purchase__.  Next we used step wise selection using AIC and BIC to assess which variables should we retain in our model. Based on this, we removed the variable source from our model. Given that source was an interesting variable we also tested it using anova and the p value was insignificant at 95% confidence level. 
 
@@ -272,7 +271,7 @@ final_model <- lmer(log(ppm) ~  dosage + bulk_purchase +
 ```
 
 
-### __Model Assessment__        
+## __Model Assessment__        
 
 To assess our final model we checked if the assumptions of Linearity, Normality, Equal variance and Independence were violated. Since all our variables are factor variables, we were unable to verify the linearity assumption.
 
@@ -300,9 +299,7 @@ ggplot(mapping = aes(sample = resid )) + stat_qq_point(size =2, color = "blue") 
 
 To check if outliers were affecting our model we removed them from our data and ran the model again. However, the standard estimates and their p-values did not change and hence we can conclude that the outliers were not affecting our model.
 
-## Model Interpretations
-
-
+## __Model Interpretations__
 
 We found out that all our explanatory variables had a significant effect on log_ppm. To make the interpretation of the standard estimates simpler we exponentiate them and measure the effect on price. We notice that for low dosage and drug not being purchase in bulk the price was 0.33 USD. If the drug was purchased in high dosage the price per milligram decreased by 65% compared to if it was purchase in low dosage. When purchase in medium dosage the price/mg decreases by 51%. If the drug was purchase in bulk, the price/mg dropped by 87%. We also note that controlling our intercept for state only explains 13.2% of the variation in log(ppm). The summary of our model is shown below.
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.height=3}
@@ -311,8 +308,6 @@ final_model <- lmer(log(ppm) ~  dosage + bulk_purchase +
 stargazer(final_model, title = "Hierarchical Model Summary", float = TRUE, no.space=TRUE, header=FALSE, single.row=TRUE, font.size="small", digits = 2, ci=TRUE, ci.level=0.95)
 ```
 
-
-
 Looking at the dot plot of random effects we notice that the the drug Codeine is found to be cheaper in the states Michigan, Missouri, Illinois and Texas. The confidence interval of the random effect for the other states contains zero, hence, we can say that the price of the drug does not vary significantly for them. The dotplot is shown below.
 
 ```{r,echo=FALSE, message=FALSE, warning=FALSE, results='asis', fig.height= 6.7, fig.align='center'}
@@ -320,19 +315,19 @@ Looking at the dot plot of random effects we notice that the the drug Codeine is
 dotplot(ranef(final_model, condVar= TRUE))$state
 ```
 
-## Limitations and Conclusions
+## __Limitations and Conclusions__
 
 There are a few potential limitations in our model. Firstly, we removed 919 data observations when dealing with missing values. This can be avoided using missing value imputation methods. The second major limitation is that the data used is not reliable as it is crowd sourced and any one can put in any value for the price of the drug.
 
 To conclude, we note that the drug Codeine can be bought for a cheaper price in the Michigan, Missouri, Illinois and Texas states. Purchasing the drug in bulk quantity and at high dosages can also reduce the price of the drug. It was surprising to find out that the source variable did not have a significant affect on the price/mg as we initially hypothesized that prices on the internet to be more expensive than the prices they observed through personal experiences.
 
-# *Part II: Voting in NC (2020 General Elections)*
-## *Deekshita Saikia as Programmer/Writer, Tego Chang as Programmer/Writer, and Sydney Donati-Leach as Programmer/Writer*
+# __*Part II: Voting in NC (2020 General Elections)*__
+## __*Deekshita Saikia as Programmer/Writer, Tego Chang as Programmer/Writer, and Sydney Donati-Leach as Programmer/Writer*__
 
-## Summary
+## __Summary__
 This analysis is to investigate the potential factors, especially the demographic ones, that could affect the turnout rate of the US 2020 election in North Carolina. During the process, data cleaning, aggregation, and merging have been performed to combine the registered and history data in the same variables. Exploratory data analysis has then proceeded and several signs were found as a reference for the following modeling process. The finalized hierarchical model helps us dive into how age is impacting the turnout rate in the election, and sort of explains why the Republicans outperform the Democrats in certain counties. 
 
-## Introduction
+## __Introduction__
 It is widely acknowledged that the voting behaviors in the election are related to several factors, e.g., demographic ones, locations, or the party you tend to vote for. Our purpose is to construct a hierarchical model to answer the following questions:
 
 - How did different demographic subgroups vote in the 2020 general elections?
@@ -340,13 +335,9 @@ It is widely acknowledged that the voting behaviors in the election are related 
 - How did the turnout rate differ between males and females for different parties?
 - How did the turnout rate differ among age groups for different parties?
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+## __Data__
 
-# Data
-
-## Data Pre-Processing
+### Data Pre-Processing
 
 The data used for this analysis was extracted from two files available with The North Carolina State Board of Elections (NCSBE), which is the agency charged with the administration of the elections process and campaign finance disclosure and compliance. One file contains the voter registration records, while the other contains data on the actual turnout (<https://www.ncsbe.gov/index.html>, <https://www.ncsbe.gov/results-data>). The code book can be found in the appendix.
 
@@ -464,7 +455,7 @@ unique(voters_reduced_agg$age)
 # HYDE
 ```
 
-## EDA
+## __EDA__
 
 Our EDA is split into 4 different sections.  First, we will look at a plot of our hierarchy, county, to determine if it has varying intercept or varying slope.  Second, we will look at our main effects, which are all factor variables in our data, so we will only look at boxplots.  Third, we will look at all of the interactions with our main effects, again by analyzing boxplots.  Finally, we will look at the interactions between our main effects and our set hierarchy to see if we need to control for varying slope.
 
@@ -597,7 +588,6 @@ print(xtable(table(voters_reduced_agg$race_code, voters_reduced_agg$party_cd)), 
 
 ```
 
-
 Finally, we looked at interactions of our main effects and county.  We did find the interaction between county and age or the interaction between county and ethnicity to be as interesting because the trend only changed in 8 or 9 counties out of all 25. When we look at interactions with race and party, we must still keep in mind the low count of observations for some categories. If we do not consider race P when analyzing our race interaction, the trend changes from one county to the next.  If we do not consider the CST or GRE parties when analyzing the party interaction, we also see differences in the median from one plot to the next. Even though both of these interactions are interesting, we had to choose which one we wanted to focus on so that we could interpret our final model. We made the decision that we should control the random slope for county versus party, and we will further discuss this in our model building section.
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis',fig.height=5, fig.width=8}
@@ -709,7 +699,7 @@ model2 <- glmer(cbind(turnout, total_voters-turnout) ~
 #tab_model(model2)
 #dotplot(ranef(model2, condVar=TRUE))
 ```
-# Model
+## __Model__
 
 Model selection was performed by accounting for different interactions and effects, which included both random and fixed effects. Our main interactions of interest are analyzing how the turnouts differed by the sexes, and if party affiliations played a role. We are also interested in exploring by the turnouts differed for the age groups for different party affiliations.
 
@@ -737,18 +727,17 @@ From the dotplot of the random effects above, we observe that introducing the ra
 stargazer(ranef(model2, condVar=TRUE), header=FALSE, float=FALSE, single.row = TRUE, no.space = TRUE, column.sep.width = "3pt",font.size = "small")
 ```
 
-## Conclusion
+## __Conclusion__
 The answers to our questions of interest are: 
 
-- The odds of turnout for males is considered 1.06 times compared with that for females, which is six percent higher. However, it is not statistically significant. 2) The odds of turnout for age group 41 to 65 is considered the highest, which is 2.7 times compared with that for age group 18 to 25. 3) On race, when Asian is set as the baseline, the odds of turnout for the pacific islander, undesignated, and white have the higher odds of turnout. However, there are just too few observations for the pacific islanders. 4) On ethnicity, when the hispan and latino category is set as the baseline, the non-hispan and non-latino category has a higher odds of turnout. 
+- The odds of turnout for males is 1.06 times compared to females, which is six percent higher. However, it is not statistically significant. The odds of turnout for age group 41 to 65 is found to be the highest, which is 2.7 times compared to the age group 18 to 25. With respect to race, when the Asian race is set as the baseline, the odds of turnout for Pacific Islanders, Undesignated, and White have higher odds of turnout. However, there are very few observations for Pacific Islanders. With respect to ethnic groups, when the Hispanic/Latino category is set as the baseline, the non-hispanic/non-latino category have higher odds of turnout. 
 
-- The odds of voting seem to differ by county in 2020 from our EDA, so we added varying intercept by county in our model. Further, we also observed an obvious trend change when evaluating if there is an interaction between party and county. Thus, varying slope by county has been added for the party predictors. In this case, the varying intercept in our model is 0, but if we select a party, say Democrat, Wake county seems to have the highest odds of turnout, while Randolph and Mcdowell have the lowest ones.
+- The odds of voting differ by county in 2020 from our EDA, so we added varying intercepts by county in our model. Further, we also observed changes in trends when checking if there is an interaction between party and county. Thus, varying slopes by county were also added to the model. In this case, the varying intercept in our model is 0, but if we select a party, say Democrat, Wake county has the highest odds of turnout, while Randolph and Mcdowell have the lowest ones.
 
-- Among the interaction between sex and party, males who vote for Democrats and unaffiliated are considered statistically significant. The odds of turnout for males to vote for Democrats is 1.47 times, increasing by forty-seven percent, compared with females to vote for CST. 
+- Observing the interaction between age and party, there are many factors that are statistically significant. One of the interpretations for these combinations is that the odds of turnout for age group 26 to 40 who vote for Democrats is 2.03 times, increasing by 103%, compared to the age group 18 to 25 who vote for CST. 
 
-- Among the interaction between age and party, there're many combinations that are statistically significant. One of the interpretations for these combinations could be that the odds of turnout for age group 26 to 40 who vote for Democrats is 2.03 times, increasing by one hundred and 3 percent, compared with the age group 18 to 25 who vote for CST. 
-
-Besides the above questions of interest, we further dive into the voter's age and investigate which age group has a higher impact on the turnout between Democrats and republicans. In the interaction between age and party, the 26 to 40 age group is the only statistically significant one compared with the other two age groups, with age group 18 to 25 as a baseline. Then, we further calculate the odds of turnout between the Democrats and Republicans at this age group, the result turns out that Republicans seems higher than Democrats, with odds of turn out is 2.41 for the former and 2.05 for the latter when the baseline is the age group of 18 to 25 voting for CST.
+Besides the above questions of interest, we further dive into the voters' age groups and investigate which age group has a higher impact on the actual turnouts between Democrats and Republicans. Observing the interaction between age and party, the 26 to 40 age group is the only statistically significant factor compared with the two other age groups, with age group 18 to 25 as the baseline. Then, we further calculate the odds of turnout between the Democrats and Republicans for this age group, and we observe that the turnouts for Republicans is higher than for Democrats, with odds of turnout observed at 2.41 for the former and 2.05 for the latter when the baseline is the age group of 18 to 25 voting for CST. Another possible explanation behind this might also be the fact that Democrats and Republicans are the two biggest parties, and hence, many observations are available against these parties, compared to the Constitution and Green parties.
 
 ### Limitations
-During EDA, we find out that race could have an interaction with party. Further, applying a varying slope by county to race could also be a feasible option. However, due to too few observations for part of the categories in race, e.g., Pacific Islander, we did not put both into action. This could be considered as future work to further explore the analysis.     
+
+One limitation of this analysis is that, the NCSBE does not provide the exact difference between the variables $party_cd$ and $voted_party_cd$ in the actual voter turnouts file. If voters changed their party affiliation at the time of casting their votes, this information is not captured in the dataset, and would not tally with the registered voter numbers. In addition, a random effect model with a varying slope and a varying intercept leads to very complicated interpretations of the model parameters. Since the data is grouped at a combination of different demographics, which makes it granular, we observe that not all groupings have enough observations recorded against them to fit a model on. Certain categories could be aggregated out so that there are sufficient observations against each grouping. 

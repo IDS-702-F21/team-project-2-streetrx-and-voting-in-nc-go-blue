@@ -7,7 +7,7 @@ geometry: margin=0.5in
 ---
 
 # __*Part I: StreetRx*__
-## __*Aarushi Verma as Programmer/Writer and Mohammad Anas as Programmer/Writer*__
+## __*Aarushi Verma as Programmer/Writer/Coordinator and Mohammad Anas as Programmer/Writer/Checker*__
 
 
 ```{r setup, include=FALSE}
@@ -42,8 +42,8 @@ StreetRx (streetrx.com) is a web-based citizen reporting tool enabling real-time
 The data used in this analysis pertains to the drug, _Codeine_. We examined our data and observed missing values in columns ppm (price per milligram), mgstr (dosage strength in mg) and source (source of the reported price). We dropped the rows with missing values in ppm and mgstr column. Our original data had 4134 observations for Codeine which reduced to 3125 after missing value removal. Since the source column had high number of missing values and multiple unique values, we categorized the column into _Personal_, _Heard it_, _Internet_, _Not Indicated_. The column mgstr is a discrete variable however, it only contained 3 unique values. We created a new column called dosage to indicate the potency of the drug based on the mgstr values as low, medium or high dosage. In the state column we noted that some states had been incorrectly updated as USA hence, we replaced this value with "Others". We did not consider the form variable in our analysis since it only contained one value - pill/tablet. for the drug Codiene.
 
 ```{r, include= FALSE, results= "asis" , message = FALSE, warning = FALSE, echo=FALSE}
-# load("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q1/streetrx.RData")
-load("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\streetrx.RData")
+load("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q1/streetrx.RData")
+#load("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\streetrx.RData")
 
 # choosing needed columns (needed)
 needed_cols <- c('ppm','state','USA_region','source','api_temp','form_temp','mgstr','bulk_purchase')
@@ -324,7 +324,7 @@ There are a few potential limitations in our model. Firstly, we removed 919 data
 To conclude, we note that the drug Codeine can be bought for a cheaper price in the Michigan, Missouri, Illinois and Texas states. Purchasing the drug in bulk quantity and at high dosages can also reduce the price of the drug. It was surprising to find out that the source variable did not have a significant affect on the price/mg as we initially hypothesized that prices on the internet to be more expensive than the prices they observed through personal experiences.
 
 # __*Part II: Voting in NC (2020 General Elections)*__
-## __*Deekshita Saikia as Programmer/Writer, Tego Chang as Programmer/Writer, and Sydney Donati-Leach as Programmer/Writer*__
+## __*Deekshita Saikia as Programmer/Writer/Checker, Tego Chang as Programmer/Writer/Coordinator, Sydney Donati-Leach as Programmer/Writer/Checker and Aarushi Verma as Presenter*__
 
 ## __Summary__
 This analysis is to investigate the potential factors, especially the demographic ones, that affect the turnout rates of the US 2020 General elections in North Carolina. During the process, data cleaning, aggregation, and merging have been performed to combine the registered voters information with the actual voter turnouts. Exploratory data analysis was then performed and the effects of demographic factors on the actual turnouts were examined. The finalized hierarchical model helps us dive into how demographics like age impact the turnout rates in the election, and serves to provide a possible explanation as to why the Republicans outperform the Democrats in certain counties. 
@@ -364,11 +364,11 @@ library(stargazer)
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis', include=FALSE}
 # Reading in datasets
-# voter <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/voter_stats_20201103.txt", header=TRUE, sep='\t')
-# history <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/history_stats_20201103.txt", header=TRUE, sep='\t')
+voter <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/voter_stats_20201103.txt", header=TRUE, sep='\t')
+history <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/history_stats_20201103.txt", header=TRUE, sep='\t')
 
-voter <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\voter_stats_20201103.txt", header=TRUE, sep='\t')
-history <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\history_stats_20201103.txt", header=TRUE, sep='\t')
+# voter <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\voter_stats_20201103.txt", header=TRUE, sep='\t')
+# history <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\history_stats_20201103.txt", header=TRUE, sep='\t')
 
 
 # Preliminary check of the datasets
@@ -477,7 +477,7 @@ ggplot(voters_reduced_agg,aes(x=county_desc, y=turnout_rate, fill=county_desc)) 
 ```
 
 
-When we go through all of the interactions of our main effects, we have to consider both the trends in the boxplots as well as the number of observations.  This is because a changing trend from one category to the next could be due to a lack of observations rather than an interesting interaction taking place.  One example of this is the race of P (Pacific Islander).  We sometimes have zero observations of this race when we split it up into different categories, so we have to look at changing trends without consideration for it. This becomes complicated when we also want to look at the interaction between race and party because there are two parties with far fewer observations: CST and GRE. Now we have three different categories that we should *not* take into consideration when looking at trends. Due to these limitations, we decided not to include this interaction in our model building. On the other hand, there are two interactions of high importance to us: age versus party and sex versus party.  These are questions of interest, so regardless of what kind of trend we see, we must include them when model building. We did see that there was a higher median for republicans of ages 26-40 as compared to democrats of the same age group, so we will keep that in mind moving forward.
+When we go through all of the interactions of our main effects, we have to consider both the trends in the boxplots as well as the number of observations.  This is because a changing trend from one category to the next could be due to a lack of observations rather than an interesting interaction taking place.  One example of this is the race of P (Pacific Islander).  We sometimes have zero observations of this race when we split it up into different categories, so we have to look at changing trends without consideration for it. This becomes complicated when we also want to look at the interaction between race and party because there are two parties with far fewer observations: CST and GRE. Now we have three different categories that we should *not* take into consideration when looking at trends. Due to these limitations, we decided not to include the interaction between race and party in our model building. On the other hand, there are two interactions of high importance to us: age versus party and sex versus party.  These are questions of interest, so regardless of what kind of trend we see, we must include them when model building. We did see that there was a higher median for republicans of ages 26-40 as compared to democrats of the same age group, so we will keep that in mind moving forward.
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis',fig.height=3.5, fig.width=3.5}
 # # frequencies for race vs party 
@@ -594,7 +594,7 @@ print(xtable(table(voters_reduced_agg$race_code, voters_reduced_agg$party_cd)), 
 
 ```
 
-Finally, we looked at interactions of our main effects and county.  We did find the interaction between county and age or the interaction between county and ethnicity to be as interesting because the trend only changed in 8 or 9 counties out of all 25. When we look at interactions with race and party, we must still keep in mind the low count of observations for some categories. If we do not consider race P when analyzing our race interaction, the trend changes from one county to the next.  If we do not consider the CST or GRE parties when analyzing the party interaction, we also see differences in the median from one plot to the next. Even though both of these interactions are interesting, we had to choose which one we wanted to focus on so that we could interpret our final model. We made the decision that we should control the random slope for county versus party, and we will further discuss this in our model building section.
+Finally, we looked at interactions of our main effects and county.  We did not find the interaction between county and age or the interaction between county and ethnicity to be as interesting because the trend only changed in 8 or 9 counties out of all 25. When we look at interactions with race and party, we must still keep in mind the low count of observations for some categories. If we do not consider race P when analyzing our race interaction, the trend changes from one county to the next.  We also saw the trend continually changing in the interaction between party and county, even when we did not take the CST or GRE parties into consideration. So now we have two interactions with county that we found interesting: race and county and party and county.  Even though both of these interactions are interesting, we had to choose only one we wanted to focus on so that we could interpret our final model. We made the decision that we should control the random slope for county versus party, and we will further discuss this in our model building section.
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis',fig.height=5, fig.width=8}
 ################## random slope ##############################
@@ -724,7 +724,7 @@ $$ \gamma_{0j}, \gamma_{1j} \hspace {1mm}{\sim} \hspace {1mm} N_2(0, \Sigma)  $$
 
 In this model, age group 18 - 25 year olds, the Constitution Party, the Asian race, the Hispanic/Latino ethnicity and the female sex are used as baseline factors that are absorbed into the intercept, for ease of interpretation of the impact of these predictors in voter turnouts. All the predictors and the interaction terms are categorical, and a total of 44 distinct factors can be seen in the final model. We observe that the fixed effects of the model are significant at the 5% level. The largest z-values can be observed for $race\_code$, $ethnic\_code$ and $age$, signifying that these factors are the strongest predictors of whether a person if likely to turn up to vote in the elections.
 
-```{r echo=FALSE,  message=FALSE, warning=FALSE, fig.align='center', results='asis', out.width="80%"}
+```{r echo=FALSE,  message=FALSE, warning=FALSE, fig.align='center', results='asis', fig.height=5, fig.width=8}
 dotplot(ranef(model2, condVar=TRUE))
 ```
 

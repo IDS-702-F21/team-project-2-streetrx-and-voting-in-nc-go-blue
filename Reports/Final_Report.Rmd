@@ -42,8 +42,8 @@ StreetRx (streetrx.com) is a web-based citizen reporting tool enabling real-time
 The data used in this analysis pertains to the drug, _Codeine_. We examined our data and observed missing values in columns ppm (price per milligram), mgstr (dosage strength in mg) and source (source of the reported price). We dropped the rows with missing values in ppm and mgstr column. Our original data had 4134 observations for Codeine which reduced to 3125 after missing value removal. Since the source column had high number of missing values and multiple unique values, we categorized the column into _Personal_, _Heard it_, _Internet_, _Not Indicated_. The column mgstr is a discrete variable however, it only contained 3 unique values. We created a new column called dosage to indicate the potency of the drug based on the mgstr values as low, medium or high dosage. In the state column we noted that some states had been incorrectly updated as USA hence, we replaced this value with "Others". We did not consider the form variable in our analysis since it only contained one value - pill/tablet. for the drug Codiene.
 
 ```{r, include= FALSE, results= "asis" , message = FALSE, warning = FALSE, echo=FALSE}
-load("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q1/streetrx.RData")
-#load("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\streetrx.RData")
+# load("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q1/streetrx.RData")
+load("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\streetrx.RData")
 
 # choosing needed columns (needed)
 needed_cols <- c('ppm','state','USA_region','source','api_temp','form_temp','mgstr','bulk_purchase')
@@ -364,11 +364,11 @@ library(stargazer)
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, results='asis', include=FALSE}
 # Reading in datasets
-voter <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/voter_stats_20201103.txt", header=TRUE, sep='\t')
-history <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/history_stats_20201103.txt", header=TRUE, sep='\t')
+# voter <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/voter_stats_20201103.txt", header=TRUE, sep='\t')
+# history <- read.csv("C:/Users/sdona/Documents/Duke/702IDS/TeamProjects/02Project/Q2/history_stats_20201103.txt", header=TRUE, sep='\t')
 
-# voter <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\voter_stats_20201103.txt", header=TRUE, sep='\t')
-# history <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\history_stats_20201103.txt", header=TRUE, sep='\t')
+voter <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\voter_stats_20201103.txt", header=TRUE, sep='\t')
+history <- read.csv("C:\\Users\\deeks\\Documents\\MIDS\\IDS 702_Modeling and representation of data\\Team Assignments\\Datasets\\history_stats_20201103.txt", header=TRUE, sep='\t')
 
 
 # Preliminary check of the datasets
@@ -722,6 +722,14 @@ where, $x_{i1}$ is $age$, $x_{i2}$ is $race\_code$, $x_{i3}$ is $ethnic\_code$, 
 
 $$ \gamma_{0j}, \gamma_{1j} \hspace {1mm}{\sim} \hspace {1mm} N_2(0, \Sigma)  $$
 
+The model results obtained are as shown below:
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE, fig.align='center', results='asis', fig.height=5, fig.width=8}
+cat("\\begin{center}")
+stargazer(model2,header=FALSE,float=FALSE,single.row = TRUE, no.space = TRUE, column.sep.width = "3pt",font.size = "small")
+cat("\\end{center}")
+```
+
 In this model, age group 18 - 25 year olds, the Constitution Party, the Asian race, the Hispanic/Latino ethnicity and the female sex are used as baseline factors that are absorbed into the intercept, for ease of interpretation of the impact of these predictors in voter turnouts. All the predictors and the interaction terms are categorical, and a total of 44 distinct factors can be seen in the final model. We observe that the fixed effects of the model are significant at the 5% level. The largest z-values can be observed for $race\_code$, $ethnic\_code$ and $age$, signifying that these factors are the strongest predictors of whether a person if likely to turn up to vote in the elections.
 
 ```{r echo=FALSE,  message=FALSE, warning=FALSE, fig.align='center', results='asis', fig.height=5, fig.width=8}
@@ -729,7 +737,6 @@ dotplot(ranef(model2, condVar=TRUE))
 ```
 
 From the dotplot of the random effects above, we observe that introducing the random slope effect of party shows that the log odds of a person voting across different counties differs greatly by the party they are affiliated to. Counties like Alexander, Cabarrus, Orange and Union have odds of voting which are significantly different than zero. People voting for the Green Party have highly varying odds, but this can also be attributed to the lower number of observations recorded against this party. Although the plot confirms that parties account for a lot of the variance in the voting odds we see across counties, it still does not explain all the variation in the model.
-
 
 ## __Conclusion__
 The answers to our questions of interest are: 
